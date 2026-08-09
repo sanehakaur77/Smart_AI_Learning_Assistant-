@@ -1,53 +1,141 @@
-import dotenv from 'dotenv'
+import dotenv from "dotenv";
 dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+
 import errorHandler from "./middleware/errorHandler.js";
+
 import quizRoutes from "./routes/quizRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
 import flashcardRoutes from "./routes/flashcardRoutes.js";
 import aiRoutes from "./routes/aiRoute.js";
 import progressRoutes from "./routes/progressRoutes.js";
-
 import authRoutes from "./routes/authRoutes.js";
+
 import connectDB from "./config/db.js";
+
+// ==============================
+// __dirname setup
+// ==============================
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ==============================
+// Create Express App
+// ==============================
+
 const app = express();
-app.use(express.json());
+
+// ==============================
+// CORS CONFIGURATION
+// ==============================
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://merry-flan-acfdd4.netlify.app",
+];
 
 app.use(
   cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: function (origin, callback) {
+      // Allow requests without an origin
+      // Example: Postman, server-to-server requests
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("Blocked by CORS:", origin);
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+
     credentials: true,
-  }),
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
+  })
 );
-///  coonect to database
-connectDB();
+
+// ==============================
+// Handle preflight requests
+// ==============================
+
+app.options("*", cors());
+
+// ==============================
+// BODY PARSERS
+// ==============================
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
 
-// Routes
-app.use(errorHandler);
-// app.use(authRoutes);
+// ==============================
+// Connect MongoDB
+// ==============================
+
+connectDB();
+
+// ==============================
+// Static uploads folder
+// ==============================
+
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
+
+// ==============================
+// API ROUTES
+// ==============================
+
 app.use("/api/auth", authRoutes);
-app.use("/api/documents", documentRoutes);
-app.use("/api/flashcards", flashcardRoutes);
-app.use("/api/ai", aiRoutes);
-app.use("/api/quizzes", quizRoutes);
-app.use("/api/progress", progressRoutes);
-// app.use("/api/docs", docsRoutes);
 
-// ✅ 404 handler (only once, keep at bottom)
+app.use("/api/documents", documentRoutes);
+
+app.use("/api/flashcards", flashcardRoutes);
+
+app.use("/api/ai", aiRoutes);
+
+app.use("/api/quizzes", quizRoutes);
+
+app.use("/api/progress", progressRoutes);
+
+// ==============================
+// Error Handler
+// ==============================
+
+// Keep this AFTER your API routes
+app.use(errorHandler);
+
+// ==============================
+// 404 HANDLER
+// ==============================
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -55,17 +143,27 @@ app.use((req, res) => {
     statusCode: 404,
   });
 });
-app.use(cors());
-// ✅ Start server
+
+// ==============================
+// START SERVER
+// ==============================
+
 const PORT = process.env.PORT || 8084;
+
 app.listen(PORT, () => {
   console.log(
-    `Server running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`,
+    `Server running in ${
+      process.env.NODE_ENV || "development"
+    } mode on port ${PORT}`
   );
 });
 
-// ✅ Catch unhandled promise rejections
+// ==============================
+// UNHANDLED PROMISE REJECTIONS
+// ==============================
+
 process.on("unhandledRejection", (err) => {
   console.error(`Error: ${err.message}`);
+
   process.exit(1);
 });
