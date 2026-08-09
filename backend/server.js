@@ -36,8 +36,8 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://localhost:3000",
-  "https://merry-flan-acfdd4.netlify.app",
+  "http://localhost:8084",
+  "https://merry-flan-acfdd4.netlify.app/",
 ];
 
 app.use(
