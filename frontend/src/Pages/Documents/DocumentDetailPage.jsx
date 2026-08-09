@@ -10,7 +10,6 @@ import ChatInterface from "../../components/chat/ChatInterface";
 import AIActions from "../ai/AiActions";
 import FlashcardManager from "../Flashcards/FlashCardManager";
 import QuizManager from "../Quizzes/QuizManager";
-import axios from "axios";
 
 const DocumentDetailPage = () => {
   const { id } = useParams();
@@ -19,7 +18,7 @@ const DocumentDetailPage = () => {
   const [loading, setLoading] = useState(true);
 
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState("Content");
 
@@ -56,56 +55,20 @@ const DocumentDetailPage = () => {
   // ==========================================
 
   useEffect(() => {
-    let objectUrl = null;
+    const cloudinaryUrl = document?.data?.filePath;
 
-    const loadPDF = async () => {
-      const cloudinaryUrl = document?.data?.filePath;
+    if (!cloudinaryUrl) {
+      setPdfUrl(null);
+      setPdfLoading(false);
+      return;
+    }
 
-      if (!cloudinaryUrl) {
-        return;
-      }
+    console.log("Cloudinary PDF URL:", cloudinaryUrl);
 
-      try {
-        setPdfLoading(true);
-
-        console.log("Cloudinary PDF URL:", cloudinaryUrl);
-
-        // Fetch PDF as binary data
-        const response = await axios.get(cloudinaryUrl, {
-          responseType: "blob",
-        });
-
-        console.log("PDF response:", response);
-        console.log("Original content type:", response.data.type);
-
-        // Force browser to treat it as PDF
-        const pdfBlob = new Blob([response.data], {
-          type: "application/pdf",
-        });
-
-        // Create temporary browser URL
-        objectUrl = URL.createObjectURL(pdfBlob);
-
-        console.log("PDF Blob URL:", objectUrl);
-
-        setPdfUrl(objectUrl);
-      } catch (error) {
-        console.error("Failed to load PDF:", error);
-
-        toast.error("Unable to load PDF.");
-      } finally {
-        setPdfLoading(false);
-      }
-    };
-
-    loadPDF();
-
-    // Cleanup old Blob URL
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
+    // Directly use Cloudinary URL.
+    // No Axios, Blob or createObjectURL required.
+    setPdfUrl(cloudinaryUrl);
+    setPdfLoading(false);
   }, [document]);
 
   // ==========================================
@@ -115,13 +78,15 @@ const DocumentDetailPage = () => {
   const renderContent = () => {
     if (pdfLoading) {
       return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10">
-          <div className="flex flex-col items-center justify-center">
-            <Spinner />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="flex justify-center items-center h-[70vh]">
+            <div className="text-center">
+              <Spinner />
 
-            <p className="mt-4 text-gray-500">
-              Loading PDF...
-            </p>
+              <p className="mt-4 text-gray-500">
+                Loading PDF...
+              </p>
+            </div>
           </div>
         </div>
       );
@@ -159,7 +124,7 @@ const DocumentDetailPage = () => {
             </p>
           </div>
 
-          {/* Open PDF */}
+          {/* Open PDF in new tab */}
           <a
             href={pdfUrl}
             target="_blank"
@@ -167,7 +132,6 @@ const DocumentDetailPage = () => {
             className="flex items-center gap-2 text-teal-600 hover:text-teal-700 font-medium"
           >
             <ExternalLink size={17} />
-
             Open in new tab
           </a>
 
@@ -287,7 +251,7 @@ const DocumentDetailPage = () => {
 
   if (!document || !document.data) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-[70vh]">
+      <div className="flex flex-col items-center justify-center min-h-[70vh]">
 
         <h2 className="text-xl font-semibold text-gray-700">
           Document not found
@@ -298,7 +262,6 @@ const DocumentDetailPage = () => {
           className="mt-4 flex items-center gap-2 text-teal-600 hover:text-teal-700"
         >
           <ArrowLeft size={18} />
-
           Back to Documents
         </Link>
 
@@ -311,7 +274,7 @@ const DocumentDetailPage = () => {
   // ==========================================
 
   return (
-    <div className="p-6">
+    <div className="container mx-auto px-4 py-6">
 
       {/* Back Button */}
       <Link
@@ -319,7 +282,6 @@ const DocumentDetailPage = () => {
         className="inline-flex items-center gap-2 text-gray-600 hover:text-teal-600 mb-5"
       >
         <ArrowLeft size={18} />
-
         Back to Documents
       </Link>
 
