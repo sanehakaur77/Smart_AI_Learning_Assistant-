@@ -33,15 +33,7 @@ const app = express();
 // ==============================
 // CORS CONFIGURATION
 // ==============================
-
-app.use(
-  cors({
-    origin: "https://merry-flan-acfdd4.netlify.app",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+app.use(cors());
 // ==============================
 // Handle preflight requests
 // ==============================
