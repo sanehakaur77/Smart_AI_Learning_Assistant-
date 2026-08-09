@@ -34,48 +34,14 @@ const app = express();
 // CORS CONFIGURATION
 // ==============================
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:8084",
-  "https://merry-flan-acfdd4.netlify.app/",
-];
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests without an origin
-      // Example: Postman, server-to-server requests
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.log("Blocked by CORS:", origin);
-
-      return callback(new Error("Not allowed by CORS"));
-    },
-
+    origin: "https://merry-flan-acfdd4.netlify.app",
     credentials: true,
-
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
-
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
 // ==============================
 // Handle preflight requests
 // ==============================
