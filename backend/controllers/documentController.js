@@ -3,7 +3,8 @@ import Flashcard from "../models/Flashcard.js";
 import Quiz from "../models/Quiz.js";
 import { extractTextFromPDF } from "../utils/pdfParser.js";
 import { chunkText } from "../utils/textChunker.js";
-import fs from "fs/promises";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+import cloudinary from "../config/cloudinary.js";
 import mongoose from "mongoose";
 
 // @desc    Upload PDF document
@@ -11,7 +12,7 @@ import mongoose from "mongoose";
 // @access  Private
 export const uploadDocument = async (req, res, next) => {
   try {
-    // 1. Check if file exists
+    // 1. Check file
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -22,10 +23,8 @@ export const uploadDocument = async (req, res, next) => {
 
     const { title } = req.body;
 
-    // 2. Validate title and clean up file if missing
-    if (!title) {
-      // Delete uploaded file if no title provided
-      await fs.unlink(req.file.path);
+    // 2. Validate title
+    if (!title || !title.trim()) {
       return res.status(400).json({
         success: false,
         error: "Please provide a document title",
@@ -33,44 +32,61 @@ export const uploadDocument = async (req, res, next) => {
       });
     }
 
-    // 3. Construct the URL for the uploaded file
-    const baseUrl = `http://localhost:${process.env.PORT || 8084}`;
-    const fileUrl = `${baseUrl}/uploads/documents/${req.file.filename}`;
+    // 3. Upload PDF to Cloudinary
+    const cloudinaryResult = await uploadToCloudinary(
+      req.file.buffer,
+      req.file.originalname
+    );
 
-    // 4. Create document record in database
+    // 4. Create document in MongoDB
     const document = await Document.create({
       userId: req.user._id,
-      title,
+
+      title: title.trim(),
+
       fileName: req.file.originalname,
-      filePath: fileUrl, // Store the URL instead of the local path
+
+      // Cloudinary URL
+      filePath: cloudinaryResult.secure_url,
+
+      // Needed later when deleting the PDF
+      cloudinaryPublicId: cloudinaryResult.public_id,
+
       fileSize: req.file.size,
+
       status: "processing",
     });
 
-    // 5. Process PDF in background (in production, use a queue like Bull)
-    processPDF(document._id, req.file.path).catch((err) => {
+    // 5. Process PDF in background
+    processPDF(
+      document._id,
+      req.file.buffer
+    ).catch((err) => {
       console.error("PDF processing error:", err);
     });
 
-    // 6. Send success response
+    // 6. Send response
     res.status(201).json({
       success: true,
       data: document,
-      message: "Document uploaded successfully. Processing in progress...",
+      message:
+        "Document uploaded successfully. Processing in progress...",
     });
   } catch (error) {
-    // Clean up file on error
-    if (req.file) {
-      await fs.unlink(req.file.path).catch(() => {});
-    }
+    console.error("Upload document error:", error);
     next(error);
   }
 };
 
-// Helper function to process PDF
-const processPDF = async (documentId, filePath) => {
+
+// ==========================================
+// PROCESS PDF
+// ==========================================
+
+const processPDF = async (documentId, fileBuffer) => {
   try {
-    const { text } = await extractTextFromPDF(filePath);
+    // Extract text from PDF buffer
+    const { text } = await extractTextFromPDF(fileBuffer);
 
     // Create chunks
     const chunks = chunkText(text, 500, 50);
@@ -82,9 +98,14 @@ const processPDF = async (documentId, filePath) => {
       status: "ready",
     });
 
-    console.log(`Document ${documentId} processed successfully`);
+    console.log(
+      `Document ${documentId} processed successfully`
+    );
   } catch (error) {
-    console.error(`Error processing document ${documentId}:`, error);
+    console.error(
+      `Error processing document ${documentId}:`,
+      error
+    );
 
     await Document.findByIdAndUpdate(documentId, {
       status: "failed",
@@ -92,17 +113,24 @@ const processPDF = async (documentId, filePath) => {
   }
 };
 
+
+// ==========================================
+// GET ALL USER DOCUMENTS
+// ==========================================
+
 // @desc    Get all user documents
-// @route   GET /api/documents
-// @access  Private
 // @route   GET /api/documents
 // @access  Private
 export const getDocuments = async (req, res, next) => {
   try {
     const documents = await Document.aggregate([
       {
-        $match: { userId: new mongoose.Types.ObjectId(req.user._id) },
+        $match: {
+          userId: new mongoose.Types.ObjectId(req.user._id),
+        },
       },
+
+      // Get flashcards
       {
         $lookup: {
           from: "flashcards",
@@ -111,6 +139,8 @@ export const getDocuments = async (req, res, next) => {
           as: "flashcardSets",
         },
       },
+
+      // Get quizzes
       {
         $lookup: {
           from: "quizzes",
@@ -119,12 +149,21 @@ export const getDocuments = async (req, res, next) => {
           as: "quizzes",
         },
       },
+
+      // Count flashcards and quizzes
       {
         $addFields: {
-          flashcardCount: { $size: "$flashcardSets" },
-          quizCount: { $size: "$quizzes" },
+          flashcardCount: {
+            $size: "$flashcardSets",
+          },
+
+          quizCount: {
+            $size: "$quizzes",
+          },
         },
       },
+
+      // Don't send large extracted data
       {
         $project: {
           extractedText: 0,
@@ -133,8 +172,12 @@ export const getDocuments = async (req, res, next) => {
           quizzes: 0,
         },
       },
+
+      // Latest documents first
       {
-        $sort: { uploadDate: -1 },
+        $sort: {
+          uploadDate: -1,
+        },
       },
     ]);
 
@@ -144,14 +187,17 @@ export const getDocuments = async (req, res, next) => {
       data: documents,
     });
   } catch (error) {
+    console.error("Get documents error:", error);
     next(error);
   }
 };
 
+
+// ==========================================
+// GET SINGLE DOCUMENT
+// ==========================================
+
 // @desc    Get single document with chunks
-// @route   GET /api/documents/:id
-// @access  Private
-// @access Private
 // @route   GET /api/documents/:id
 // @access  Private
 export const getDocument = async (req, res, next) => {
@@ -169,22 +215,28 @@ export const getDocument = async (req, res, next) => {
       });
     }
 
-    // Get counts of associated flashcards and quizzes
-    const flashcardCount = await Flashcard.countDocuments({
-      documentId: document._id,
-      userId: req.user._id,
-    });
-    const quizCount = await Quiz.countDocuments({
-      documentId: document._id,
-      userId: req.user._id,
-    });
+    // Get flashcard count
+    const flashcardCount =
+      await Flashcard.countDocuments({
+        documentId: document._id,
+        userId: req.user._id,
+      });
+
+    // Get quiz count
+    const quizCount =
+      await Quiz.countDocuments({
+        documentId: document._id,
+        userId: req.user._id,
+      });
 
     // Update last accessed
-    document.lastAccessed = Date.now();
+    document.lastAccessed = new Date();
+
     await document.save();
 
-    // Combine document data with counts
+    // Convert mongoose document to object
     const documentData = document.toObject();
+
     documentData.flashcardCount = flashcardCount;
     documentData.quizCount = quizCount;
 
@@ -193,9 +245,15 @@ export const getDocument = async (req, res, next) => {
       data: documentData,
     });
   } catch (error) {
+    console.error("Get document error:", error);
     next(error);
   }
 };
+
+
+// ==========================================
+// DELETE DOCUMENT
+// ==========================================
 
 // @desc    Delete document
 // @route   DELETE /api/documents/:id
@@ -215,10 +273,17 @@ export const deleteDocument = async (req, res, next) => {
       });
     }
 
-    // Delete file from filesystem
-    await fs.unlink(document.filePath).catch(() => ({}));
+    // Delete PDF from Cloudinary
+    if (document.cloudinaryPublicId) {
+      await cloudinary.uploader.destroy(
+        document.cloudinaryPublicId,
+        {
+          resource_type: "raw",
+        }
+      );
+    }
 
-    // Delete document
+    // Delete document from MongoDB
     await document.deleteOne();
 
     res.status(200).json({
@@ -226,11 +291,55 @@ export const deleteDocument = async (req, res, next) => {
       message: "Document deleted successfully",
     });
   } catch (error) {
+    console.error("Delete document error:", error);
     next(error);
   }
 };
 
-// @desc    Update document
+
+// ==========================================
+// UPDATE DOCUMENT
+// ==========================================
+
+// @desc    Update document title
 // @route   PUT /api/documents/:id
 // @access  Private
-// export const updateDocument = async (req, res, next) => {};
+export const updateDocument = async (req, res, next) => {
+  try {
+    const { title } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Please provide a document title",
+        statusCode: 400,
+      });
+    }
+
+    const document = await Document.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        error: "Document not found",
+        statusCode: 404,
+      });
+    }
+
+    document.title = title.trim();
+
+    await document.save();
+
+    res.status(200).json({
+      success: true,
+      data: document,
+      message: "Document updated successfully",
+    });
+  } catch (error) {
+    console.error("Update document error:", error);
+    next(error);
+  }
+};
