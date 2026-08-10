@@ -34,11 +34,8 @@ const app = express();
 // CORS CONFIGURATION
 // ==============================
 app.use(cors());
-// ==============================
-// Handle preflight requests
-// ==============================
 
-app.options("*", cors());
+
 
 // ==============================
 // BODY PARSERS
