@@ -3,7 +3,7 @@ import Flashcard from "../models/Flashcard.js";
 import Quiz from "../models/Quiz.js";
 import { extractTextFromPDF } from "../utils/pdfParser.js";
 import { chunkText } from "../utils/textChunker.js";
-import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+import { uploadToCloudinary } from "../utils/uploadtoCloudinary.js";
 import cloudinary from "../config/cloudinary.js";
 import mongoose from "mongoose";
 
