@@ -118,6 +118,9 @@ const DocumentDetailPage = () => {
       );
     }
 
+    // Encoded viewer URL for mobile rendering compatibility
+    const embeddedPdfUrl = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+
     return (
       <div className="w-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
 
@@ -188,7 +191,7 @@ const DocumentDetailPage = () => {
         </div>
 
         {/* =====================================================
-            PDF VIEWER
+            MOBILE-FRIENDLY PDF VIEWER
         ===================================================== */}
 
         <div className="w-full bg-gray-100">
@@ -196,95 +199,19 @@ const DocumentDetailPage = () => {
           <div
             className="
               w-full
-              h-[60vh]
-              min-h-[450px]
-              sm:h-[65vh]
-              md:h-[70vh]
-              lg:h-[75vh]
+              h-[65vh]
+              min-h-[400px]
+              sm:h-[70vh]
+              md:h-[75vh]
+              lg:h-[80vh]
             "
           >
-
-            <object
-              data={pdfUrl}
-              type="application/pdf"
-              className="w-full h-full"
-            >
-
-              {/* =================================================
-                  MOBILE / BROWSER FALLBACK
-              ================================================= */}
-
-              <div
-                className="
-                  w-full
-                  h-full
-                  min-h-[450px]
-                  flex
-                  flex-col
-                  items-center
-                  justify-center
-                  bg-white
-                  p-6
-                  text-center
-                "
-              >
-
-                <div className="mb-4">
-
-                  <div
-                    className="
-                      w-16
-                      h-16
-                      mx-auto
-                      rounded-xl
-                      bg-gray-100
-                      flex
-                      items-center
-                      justify-center
-                      text-2xl
-                    "
-                  >
-                    📄
-                  </div>
-
-                </div>
-
-                <h3 className="text-lg font-semibold text-gray-700">
-                  {document?.data?.fileName || "PDF Document"}
-                </h3>
-
-                <p className="text-sm text-gray-500 mt-2 mb-5">
-                  Your PDF is ready to view.
-                </p>
-
-                <a
-                  href={pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="
-                    inline-flex
-                    items-center
-                    justify-center
-                    gap-2
-                    bg-teal-600
-                    hover:bg-teal-700
-                    text-white
-                    px-6
-                    py-3
-                    rounded-lg
-                    font-medium
-                    text-sm
-                  "
-                >
-                  <ExternalLink size={18} />
-
-                  Open PDF
-                </a>
-
-              </div>
-
-            </object>
-
+            <iframe
+              src={embeddedPdfUrl}
+              title="PDF Viewer"
+              className="w-full h-full border-0"
+              loading="lazy"
+            />
           </div>
 
         </div>
