@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, ExternalLink, FileText } from "lucide-react";
-import toast from "react-hot-toast";
-
 import documentService from "../../services/documentService";
 import Spinner from "../../components/common/Spinner";
+import toast from "react-hot-toast";
+import { ArrowLeft, ExternalLink } from "lucide-react";
+
 import PageHeader from "../../components/common/PageHeader";
 import Tabs from "../../components/common/Tabs";
 import ChatInterface from "../../components/chat/ChatInterface";
@@ -18,7 +18,7 @@ const DocumentDetailPage = () => {
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState("Content");
@@ -32,13 +32,11 @@ const DocumentDetailPage = () => {
       try {
         setLoading(true);
 
-        const response = await documentService.getDocumentById(id);
+        const data = await documentService.getDocumentById(id);
 
-        console.log("========== DOCUMENT RESPONSE ==========");
-        console.log(response);
-        console.log("=======================================");
+        console.log("Document response:", data);
 
-        setDocument(response);
+        setDocument(data);
       } catch (error) {
         console.error("Failed to fetch document:", error);
 
@@ -62,78 +60,37 @@ const DocumentDetailPage = () => {
       return;
     }
 
-    /*
-      Depending on your backend, the URL may be stored
-      under one of these fields.
-    */
-
-    const filePath =
+    const url =
       document?.data?.filePath ||
       document?.data?.fileUrl ||
       document?.data?.cloudinaryUrl ||
       document?.filePath ||
       document?.fileUrl ||
       document?.cloudinaryUrl ||
-      "";
+      null;
 
-    console.log("========== PDF URL ==========");
-    console.log(filePath);
-    console.log("=============================");
+    console.log("================================");
+    console.log("PDF URL:", url);
+    console.log("================================");
 
-    if (!filePath) {
-      console.error("No PDF URL found.");
-
-      setPdfUrl("");
-      setPdfLoading(false);
-      return;
-    }
-
-    // =======================================================
-    // PREVENT DOCUMENT PAGE FROM BEING LOADED IN IFRAME
-    // =======================================================
-
-    const currentOrigin = window.location.origin;
-
-    if (
-      filePath.startsWith(currentOrigin) &&
-      (
-        filePath.includes("/documents/") ||
-        filePath.includes("/document/")
-      )
-    ) {
-      console.error(
-        "ERROR: filePath is pointing to the React document page instead of the actual PDF."
-      );
-
-      console.error("Received URL:", filePath);
-
-      setPdfUrl("");
-      setPdfLoading(false);
-
-      return;
-    }
-
-    setPdfUrl(filePath);
+    setPdfUrl(url);
     setPdfLoading(false);
   }, [document]);
 
   // =========================================================
-  // CONTENT TAB
+  // CONTENT
   // =========================================================
 
   const renderContent = () => {
-    // -----------------------------------------------
-    // LOADING
-    // -----------------------------------------------
-
+    // Loading
     if (pdfLoading) {
       return (
-        <div className="w-full bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
-          <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-full bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex justify-center items-center min-h-[60vh]">
             <div className="text-center">
               <Spinner />
 
-              <p className="mt-4 text-sm sm:text-base text-gray-500">
+              <p className="mt-4 text-gray-500 text-sm">
                 Loading PDF...
               </p>
             </div>
@@ -142,29 +99,18 @@ const DocumentDetailPage = () => {
       );
     }
 
-    // -----------------------------------------------
-    // NO PDF
-    // -----------------------------------------------
-
+    // No PDF
     if (!pdfUrl) {
       return (
-        <div className="w-full bg-white rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex flex-col items-center justify-center text-center px-5 py-20">
+        <div className="w-full bg-white rounded-xl border border-gray-200 p-8">
+          <div className="text-center">
 
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-              <FileText
-                size={30}
-                className="text-gray-400"
-              />
-            </div>
-
-            <h2 className="mt-4 text-lg font-semibold text-gray-700">
-              PDF cannot be displayed
+            <h2 className="text-lg font-semibold text-gray-700">
+              PDF not available
             </h2>
 
-            <p className="mt-2 text-sm text-gray-500 max-w-md">
-              The document URL is not pointing to the actual PDF file.
-              Please check the Cloudinary file URL saved in the database.
+            <p className="text-sm text-gray-500 mt-2">
+              No PDF URL was found for this document.
             </p>
 
           </div>
@@ -172,34 +118,28 @@ const DocumentDetailPage = () => {
       );
     }
 
-    // =====================================================
-    // PDF VIEWER
-    // =====================================================
-
     return (
       <div className="w-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
 
-        {/* =================================================
+        {/* =====================================================
             HEADER
-        ================================================= */}
+        ===================================================== */}
 
         <div
           className="
-            w-full
             flex
             flex-col
-            gap-3
             sm:flex-row
             sm:items-center
             sm:justify-between
+            gap-3
             p-4
-            sm:p-5
             border-b
             border-gray-200
           "
         >
 
-          {/* DOCUMENT DETAILS */}
+          {/* Title */}
 
           <div className="min-w-0 flex-1">
 
@@ -207,7 +147,7 @@ const DocumentDetailPage = () => {
               Document Viewer
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500 break-words">
+            <p className="text-sm text-gray-500 mt-1 break-words">
               {document?.data?.fileName ||
                 document?.data?.title ||
                 "PDF Document"}
@@ -215,7 +155,7 @@ const DocumentDetailPage = () => {
 
           </div>
 
-          {/* OPEN PDF */}
+          {/* Open PDF */}
 
           <a
             href={pdfUrl}
@@ -224,8 +164,7 @@ const DocumentDetailPage = () => {
             className="
               w-full
               sm:w-auto
-              shrink-0
-              inline-flex
+              flex
               items-center
               justify-center
               gap-2
@@ -236,24 +175,23 @@ const DocumentDetailPage = () => {
               border-teal-200
               text-teal-600
               hover:bg-teal-50
-              hover:border-teal-300
               font-medium
               text-sm
-              transition
+              flex-shrink-0
             "
           >
             <ExternalLink size={17} />
 
-            <span>Open in new tab</span>
+            Open in new tab
           </a>
 
         </div>
 
-        {/* =================================================
-            PDF CONTAINER
-        ================================================= */}
+        {/* =====================================================
+            PDF VIEWER
+        ===================================================== */}
 
-        <div className="w-full bg-gray-100 p-0">
+        <div className="w-full bg-gray-100">
 
           <div
             className="
@@ -263,25 +201,89 @@ const DocumentDetailPage = () => {
               sm:h-[65vh]
               md:h-[70vh]
               lg:h-[75vh]
-              xl:h-[80vh]
             "
           >
 
-            <iframe
-              src={pdfUrl}
-              title={
-                document?.data?.title ||
-                document?.data?.fileName ||
-                "PDF Viewer"
-              }
-              className="
-                block
-                w-full
-                h-full
-                border-0
-              "
-              loading="lazy"
-            />
+            <object
+              data={pdfUrl}
+              type="application/pdf"
+              className="w-full h-full"
+            >
+
+              {/* =================================================
+                  MOBILE / BROWSER FALLBACK
+              ================================================= */}
+
+              <div
+                className="
+                  w-full
+                  h-full
+                  min-h-[450px]
+                  flex
+                  flex-col
+                  items-center
+                  justify-center
+                  bg-white
+                  p-6
+                  text-center
+                "
+              >
+
+                <div className="mb-4">
+
+                  <div
+                    className="
+                      w-16
+                      h-16
+                      mx-auto
+                      rounded-xl
+                      bg-gray-100
+                      flex
+                      items-center
+                      justify-center
+                      text-2xl
+                    "
+                  >
+                    📄
+                  </div>
+
+                </div>
+
+                <h3 className="text-lg font-semibold text-gray-700">
+                  {document?.data?.fileName || "PDF Document"}
+                </h3>
+
+                <p className="text-sm text-gray-500 mt-2 mb-5">
+                  Your PDF is ready to view.
+                </p>
+
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="
+                    inline-flex
+                    items-center
+                    justify-center
+                    gap-2
+                    bg-teal-600
+                    hover:bg-teal-700
+                    text-white
+                    px-6
+                    py-3
+                    rounded-lg
+                    font-medium
+                    text-sm
+                  "
+                >
+                  <ExternalLink size={18} />
+
+                  Open PDF
+                </a>
+
+              </div>
+
+            </object>
 
           </div>
 
@@ -297,7 +299,7 @@ const DocumentDetailPage = () => {
 
   const renderChat = () => {
     return (
-      <div className="w-full min-w-0">
+      <div className="w-full">
         <ChatInterface documentId={id} />
       </div>
     );
@@ -309,7 +311,7 @@ const DocumentDetailPage = () => {
 
   const renderAIActions = () => {
     return (
-      <div className="w-full min-w-0">
+      <div className="w-full">
         <AIActions documentId={id} />
       </div>
     );
@@ -321,7 +323,7 @@ const DocumentDetailPage = () => {
 
   const renderFlashcardsTab = () => {
     return (
-      <div className="w-full min-w-0">
+      <div className="w-full">
         <FlashcardManager documentId={id} />
       </div>
     );
@@ -333,7 +335,7 @@ const DocumentDetailPage = () => {
 
   const renderQuizzesTab = () => {
     return (
-      <div className="w-full min-w-0">
+      <div className="w-full">
         <QuizManager documentId={id} />
       </div>
     );
@@ -372,12 +374,12 @@ const DocumentDetailPage = () => {
   ];
 
   // =========================================================
-  // MAIN LOADING
+  // LOADING
   // =========================================================
 
   if (loading) {
     return (
-      <div className="w-full min-h-[70vh] flex items-center justify-center px-4">
+      <div className="w-full min-h-[70vh] flex items-center justify-center">
         <Spinner />
       </div>
     );
@@ -389,9 +391,20 @@ const DocumentDetailPage = () => {
 
   if (!document || !document.data) {
     return (
-      <div className="w-full min-h-[70vh] flex flex-col items-center justify-center px-4 text-center">
+      <div
+        className="
+          w-full
+          min-h-[70vh]
+          flex
+          flex-col
+          items-center
+          justify-center
+          px-4
+          text-center
+        "
+      >
 
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-700">
+        <h2 className="text-xl font-semibold text-gray-700">
           Document not found
         </h2>
 
@@ -399,13 +412,11 @@ const DocumentDetailPage = () => {
           to="/documents"
           className="
             mt-4
-            inline-flex
+            flex
             items-center
             gap-2
             text-teal-600
             hover:text-teal-700
-            text-sm
-            sm:text-base
           "
         >
           <ArrowLeft size={18} />
@@ -418,7 +429,7 @@ const DocumentDetailPage = () => {
   }
 
   // =========================================================
-  // MAIN PAGE
+  // MAIN UI
   // =========================================================
 
   return (
@@ -436,9 +447,9 @@ const DocumentDetailPage = () => {
       "
     >
 
-      {/* =================================================
-          BACK BUTTON
-      ================================================= */}
+      {/* =====================================================
+          BACK
+      ===================================================== */}
 
       <Link
         to="/documents"
@@ -446,12 +457,12 @@ const DocumentDetailPage = () => {
           inline-flex
           items-center
           gap-2
+          text-gray-600
+          hover:text-teal-600
           mb-4
           sm:mb-5
           text-sm
           sm:text-base
-          text-gray-600
-          hover:text-teal-600
         "
       >
         <ArrowLeft size={18} />
@@ -459,23 +470,21 @@ const DocumentDetailPage = () => {
         Back to Documents
       </Link>
 
-      {/* =================================================
+      {/* =====================================================
           PAGE HEADER
-      ================================================= */}
+      ===================================================== */}
 
-      <div className="w-full min-w-0 overflow-hidden">
-
+      <div className="w-full overflow-hidden">
         <PageHeader
           title={document?.data?.title || "Document"}
         />
-
       </div>
 
-      {/* =================================================
+      {/* =====================================================
           TABS
-      ================================================= */}
+      ===================================================== */}
 
-      <div className="mt-4 sm:mt-6 w-full min-w-0">
+      <div className="mt-4 sm:mt-6 w-full">
 
         <div className="w-full overflow-x-auto">
 
