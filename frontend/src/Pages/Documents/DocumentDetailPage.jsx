@@ -76,82 +76,96 @@ const DocumentDetailPage = () => {
   // ==========================================
 
   const renderContent = () => {
-    if (pdfLoading) {
-      return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <div className="flex justify-center items-center h-[70vh]">
-            <div className="text-center">
-              <Spinner />
-
-              <p className="mt-4 text-gray-500">
-                Loading PDF...
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (!document?.data?.filePath) {
-      return (
-        <div className="text-center py-20 text-gray-500 text-lg">
-          PDF not available
-        </div>
-      );
-    }
-
-    if (!pdfUrl) {
-      return (
-        <div className="text-center py-20 text-gray-500 text-lg">
-          Unable to load PDF
-        </div>
-      );
-    }
-
+  if (pdfLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-
-        {/* Header */}
-        <div className="flex justify-between items-center mb-4 border-b pb-4">
-
-          <div>
-            <h2 className="font-semibold text-gray-800 text-lg">
-              Document Viewer
-            </h2>
-
-            <p className="text-sm text-gray-500 mt-1">
-              {document.data.fileName}
+      <div className="w-full bg-white rounded-xl border border-gray-200 p-4">
+        <div className="flex justify-center items-center h-[60vh]">
+          <div className="text-center">
+            <Spinner />
+            <p className="mt-4 text-gray-500">
+              Loading PDF...
             </p>
           </div>
-
-          {/* Open PDF in new tab */}
-          <a
-            href={pdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-teal-600 hover:text-teal-700 font-medium"
-          >
-            <ExternalLink size={17} />
-            Open in new tab
-          </a>
-
         </div>
-
-        {/* PDF Viewer */}
-        <div className="w-full h-[75vh] rounded-lg overflow-hidden border border-gray-300 bg-gray-100">
-
-          <iframe
-            src={pdfUrl}
-            title={document.data.title || "PDF Viewer"}
-            className="w-full h-full"
-            frameBorder="0"
-          />
-
-        </div>
-
       </div>
     );
-  };
+  }
+
+  if (!pdfUrl) {
+    return (
+      <div className="w-full text-center py-20 text-gray-500">
+        PDF not available
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full bg-white rounded-xl border border-gray-200 overflow-hidden">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b">
+
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
+            Document Viewer
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-1 break-words">
+            {document?.data?.fileName}
+          </p>
+        </div>
+
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="
+            inline-flex
+            items-center
+            justify-center
+            gap-2
+            px-4
+            py-2
+            rounded-lg
+            text-teal-600
+            border
+            border-teal-200
+            hover:bg-teal-50
+            text-sm
+            font-medium
+            w-full
+            sm:w-auto
+          "
+        >
+          <ExternalLink size={17} />
+          Open PDF
+        </a>
+
+      </div>
+
+      {/* PDF */}
+      <div className="w-full bg-gray-100">
+
+        <iframe
+          src={pdfUrl}
+          title={document?.data?.fileName || "PDF Viewer"}
+          className="
+            block
+            w-full
+            h-[60vh]
+            min-h-[450px]
+            sm:h-[65vh]
+            md:h-[70vh]
+            lg:h-[75vh]
+            border-0
+          "
+        />
+
+      </div>
+
+    </div>
+  );
+};
 
   // ==========================================
   // CHAT

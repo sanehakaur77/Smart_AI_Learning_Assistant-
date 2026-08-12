@@ -1,4 +1,4 @@
-export const BASE_URL = "https://smart-ai-learning-assistant.onrender.com";
+export const BASE_URL = "https://smart-ai-learning-assistant-rz8t.onrender.com";
 
 export const API_PATHS = {
   AUTH: {
